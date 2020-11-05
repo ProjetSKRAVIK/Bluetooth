@@ -24,4 +24,7 @@ Nous savons qu'il n'est pas possible pour un seul maitre de maintenir plusieurs 
 
 ## NRF24
 
-A SUIVRE
+Les modules NRF24 permettent d'envoyer et de recevoir des informations à distance avec très peu d'énergie sur la fréquence 2.4GHz. En associant chacuns de nos cartes Arduinos secondaires à ce type de module et une antenne, nous pourrions envoyer les données en temps réel vers la carte Arduino centrale. Nous avons donc besoin de 2 programmes différents. Nous utiliserons des liaisons SPI en définissant la carte Arduino centrale comme Master et les autres comme Slaves. Il existe déjà des bibliothèques dédiées aux modules NRF24 pour simplifier les connections et les échanges.
+
+Il faut faire des test pour savoir si des informations sont perdues avec les programmes que l'on utilise car cette méthode de communication n'est pas extremement fiable.
+
