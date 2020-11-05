@@ -1,89 +1,75 @@
-/* 1 ch NRF 24 TRANSMITTER example.
-/* Tutorial link: http://electronoobs.com/eng_arduino_tut95.php
- * Code: http://electronoobs.com/eng_arduino_tut95_code1.php
- * Scheamtic: http://electronoobs.com/eng_arduino_tut95_sch1.php
- * Youtube Channel: http://www.youtube/c/electronoobs 
-  
-  Module // Arduino UNO    
-    GND    ->   GND
-    Vcc    ->   3.3V
-    CE     ->   D9
-    CSN    ->   D10
-    CLK    ->   D13
-    MOSI   ->   D11
-    MISO   ->   D12  
- */
-
-/* First we include the libraries. Download it from 
-   my webpage if you donw have the NRF24 library */ 
 #include <SPI.h>
-#include <nRF24L01.h>             //Downlaod it here: https://www.electronoobs.com/eng_arduino_NRF24.php
-#include <RF24.h>            
-/*//////////////////////////////////////////////////////*/
 
-/*Create a unique pipe out. The receiver has to 
-  wear the same unique code*/  
-const uint64_t pipeIn = 0xE8E8F0F0E1LL; //IMPORTANT: The same as in the receiver!!!
-/*//////////////////////////////////////////////////////*/
+#include "nRF24L01.h"
 
-/*Create the data struct we will send
-  The sizeof this struct should not exceed 32 bytes
-  This gives us up to 32 8 bits channals */
-RF24 radio(9, 10); // select  CSN and CE  pins
-struct MyData {
-  byte pot_value;  
-};
-int LED = 3;
-MyData data;
-/*//////////////////////////////////////////////////////*/
+#include "RF24.h"
 
-//This function will only set the value to  0 if the connection is lost...
-void resetData() 
-{
-  data.pot_value = 0;  
+int senderId;
+
+// Set up nRF24L01 radio on SPI bus plus pins 9 & 10
+//Contacts from the radio to connect NRF24L01 pinamnam -> Arduino
+
+//SCK -> 13
+//MISO -> 12
+//MOSI -> 11
+//CSN -> 10
+//CE -> 9
+
+RF24 radio(9, 10);
+
+// this is not the channel address, but the transmitter address
+const uint64_t pipe = 0xE8E8F0F0E1LL;
+
+//LEDs connected to these pins
+// ENSURE YOU HAVE THE RIGHT DIGITAL PINS HERE
+int LEDpins[5] = { 2, 3, 4, 5, 6 };
+
+void setup(void) {
+	Serial.begin(9600);
+
+	radio.begin();
+
+	// the following statements improve transmission range
+	radio.setPayloadSize(2); // setting the payload size to the needed value
+	radio.setDataRate(RF24_250KBPS); // reducing bandwidth
+
+	radio.openReadingPipe(1, pipe); // Open one of the 6 pipes for reception
+
+	radio.startListening(); // begin to listen
+
+	// Enable all the LED pins as output
+	for (int i = 0; i < 5; i++) {
+		pinMode(LEDpins[i], OUTPUT);
+		digitalWrite(LEDpins[i], LOW); // this is unnecessary but good practice nonetheless
+	}
+
 }
 
+void loop(void) {
 
-/**************************************************/
+	// Turns off all the LEDs
+	for (int i = 0; i < 5; i++) {
+		digitalWrite(LEDpins[i], LOW);
+	}
 
-void setup()
-{  
-  pinMode(LED,OUTPUT);
-  Serial.begin(9600); //Set the speed to 9600 bauds if you want.
-  //You should always have the same speed selected in the serial monitor
-  resetData();
-  radio.begin();
-  radio.setAutoAck(false);
-  radio.setDataRate(RF24_250KBPS);  
-  radio.openReadingPipe(1,pipeIn);
-  //we start the radio comunication
-  radio.startListening();
-}
+	if (radio.available()) {
 
+		// this while is here to throw away all the packets but the last one
+		bool done = false;
+		while (!done) {
 
+			// read and write expect a reference to the payload (& symbol)
+			// second argument is the packet length in bytes (sizeof(int) == 2)
+			done = radio.read(&senderId, 2);
+		}
 
-/******Reset the received data to 0 if connection is lost******/
-unsigned long lastRecvTime = 0;
-void recvData()
-{
-  while ( radio.available() )
-  {
-    radio.read(&data, sizeof(MyData));
-    lastRecvTime = millis(); //here we receive the data
-  }
-}
-/**************************************************************/
-
-
-
-void loop()
-{
-recvData();
-unsigned long now = millis();
-//Here we check if we've lost signal, if we did we reset the values 
-if ( now - lastRecvTime > 1000 ) {
-// Signal lost?
-resetData();
+		//Light up the correct LED for 50ms
+		digitalWrite(LEDpins[senderId], HIGH);
+		Serial.print("LED ");
+		Serial.print(senderId);
+		Serial.println(" On");
+		delay(50);
+	}
 }
 
 Serial.print("Potentiometer: "); Serial.println(data.pot_value);  
